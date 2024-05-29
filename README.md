@@ -7,4 +7,4 @@ Additionally, the server has three open ports: port 80 for the website, port 444
 
 
 #Images
-[5070e983-586f-4220-a18a-cf753df7dbe2](https://github.com/tommyfonseca7/PicoTempController/assets/79159678/17c01277-0d42-4be4-b926-f9bf909fb8bd)
+![5070e983-586f-4220-a18a-cf753df7dbe2](https://github.com/tommyfonseca7/PicoTempController/assets/79159678/17c01277-0d42-4be4-b926-f9bf909fb8bd)
