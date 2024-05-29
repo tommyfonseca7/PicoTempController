@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8" />
+    <link
+      href="https://cdn.jsdelivr.net/gh/eliyantosarage/font-awesome-pro@main/fontawesome-pro-6.5.1-web/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      html {
+        font-family: Arial;
+        display: inline-block;
+        margin: 0px auto;
+        text-align: center;
+      }
+      h2 {
+        font-size: 3rem;
+      }
+      p {
+        font-size: 3rem;
+      }
+      .units {
+        font-size: 1.2rem;
+      }
+      .ds-labels {
+        font-size: 1.5rem;
+        vertical-align: middle;
+        padding-bottom: 15px;
+      }
+      footer {
+        text-align: center;
+        padding: 3px;
+        background-color: Gray;
+        color: white;
+        font-size: 1.25em;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  </head>
+  <body>
+    <h1>Pico Temperature Controller</h1>
+
+    <table style="border-collapse: collapse; width: 100%" border="0">
+      <tbody>
+        <tr>
+          <td style="width: 50%; text-align: center">
+            <p>
+              <i
+                class="fa-solid fa-house-chimney-user"
+                style="color: #fec700"
+              ></i>
+            </p>
+            <h2>Interior</h2>
+            <p>
+              <i
+                class="fa-solid fa-thermometer-half"
+                style="color: #fec700"
+              ></i>
+              <span class="ds-labels">Temperature</span>
+              <span id="temperature_in">""" + str(T_in) + """</span>
+              <span class="units">&deg;C</span>
+            </p>
+            <p>
+              <i class="fas fa-tint" style="color: #fec700"></i>
+              <span class="ds-labels">Humidity</span>
+              <span id="humidity_in">""" + str(H_in) + """</span>
+              <span class="units">%</span>
+            </p>
+          </td>
+          <td style="width: 50%; text-align: center">
+            <p>
+              <i
+                class="fa-solid fa-house-person-leave"
+                style="color: #00c7fc"
+              ></i>
+            </p>
+            <h2>Exterior</h2>
+            <p>
+              <i class="fas fa-thermometer-half" style="color: #00c7fc"></i>
+              <span class="ds-labels">Temperature</span>
+              <span id="temperature_out">""" + str(T_out) + """</span>
+              <span class="units">&deg;C</span>
+            </p>
+            <p>
+              <i class="fas fa-tint" style="color: #00c7fc"></i>
+              <span class="ds-labels">Humidity</span>
+              <span id="humidity_out">""" + str(H_out) + """</span>
+              <span class="units">%</span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td style="width: 50%; text-align: center">
+            <h2>Fan</h2>
+            <p>
+              <i class="fa-solid fa-fan" style="color: #caf0fe"></i>
+              <span class="ds-labels">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value="0"
+                  onmouseup="showValFan(this.value)"
+                  ontouchend="showValFan(this.value)"
+                />
+              </span>
+              <sup class="units" id="valBox_cooling">0</sup
+              ><sup class="units">%</sup>
+            </p>
+          </td>
+          <td style="width: 50%; text-align: center">
+            <h2>Heater</h2>
+            <p>
+              <i class="fa-solid fa-heat" style="color: #ff2600"></i>
+              <span class="ds-labels">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value="0"
+                  onmouseup="showValHeat(this.value)"
+                  ontouchend="showValHeat(this.value)"
+                />
+              </span>
+              <sup class="units" id="valBox_heating">0</sup
+              ><sup class="units">%</sup>
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <canvas id="myChart" width="400" height="100"></canvas>
+
+    <button
+      id="downloadCsv"
+      style="
+        padding: 0.7em;
+        color: #fff;
+        background-color: #007bff;
+        border: none;
+        border-radius: 1em;
+        cursor: pointer;
+      "
+    >
+      Download CSV
+    </button>
+
+    <div
+      style="
+        display: flex;
+        justify-content: center;
+        margin: 20px;
+        padding: 20px;
+      "
+    >
+      <form
+        id="pidControllerForm"
+        style="
+          width: 300px;
+          height: 600px;
+          padding: 1em;
+          border: 1px solid #ccc;
+          border-radius: 1em;
+          margin: 20px;
+        "
+      >
+        <h3>PID Controller</h3>
+        <h4 id="controllerStatePID" style="margin: 0 0 1em">State: Off</h4>
+
+        <div style="margin-bottom: 1em">
+          <label
+            for="proportional"
+            style="margin-bottom: 0.5em; color: #333333; display: block"
+            >Proportional (P):</label
+          >
+          <input
+            type="text"
+            id="proportional"
+            name="proportional"
+            style="
+              border: 1px solid #ccc;
+              padding: 0.5em;
+              font-size: 1em;
+              width: 100%;
+              box-sizing: border-box;
+            "
+          />
+        </div>
+        <div style="margin-bottom: 1em">
+          <label
+            for="integral"
+            style="margin-bottom: 0.5em; color: #333333; display: block"
+            >Integral (I):</label
+          >
+          <input
+            type="text"
+            id="integral"
+            name="integral"
+            style="
+              border: 1px solid #ccc;
+              padding: 0.5em;
+              font-size: 1em;
+              width: 100%;
+              box-sizing: border-box;
+            "
+          />
+        </div>
+        <div style="margin-bottom: 1em">
+          <label
+            for="derivative"
+            style="margin-bottom: 0.5em; color: #333333; display: block"
+            >Derivative (D):</label
+          >
+          <input
+            type="text"
+            id="derivative"
+            name="derivative"
+            style="
+              border: 1px solid #ccc;
+              padding: 0.5em;
+              font-size: 1em;
+              width: 100%;
+              box-sizing: border-box;
+            "
+          />
+        </div>
+        <div style="margin-bottom: 1em">
+          <label
+            for="tresholdPID"
+            style="margin-bottom: 0.5em; color: #333333; display: block"
+            >Threshold:</label
+          >
+          <input
+            type="text"
+            id="tresholdPID"
+            name="tresholdPID"
+            style="
+              border: 1px solid #ccc;
+              padding: 0.5em;
+              font-size: 1em;
+              width: 100%;
+              box-sizing: border-box;
+            "
+          />
+        </div>
+        <div style="margin-bottom: 1em">
+          <label
+            for="temperaturePID"
+            style="margin-bottom: 0.5em; color: #333333; display: block"
+            >Temperature:</label
+          >
+          <input
+            type="text"
+            id="temperaturePID"
+            name="temperaturePID"
+            style="
+              border: 1px solid #ccc;
+              padding: 0.5em;
+              font-size: 1em;
+              width: 100%;
+              box-sizing: border-box;
+            "
+          />
+        </div>
+        <div>
+          <button
+            type="submit"
+            style="
+              padding: 0.7em;
+              color: #fff;
+              background-color: #007bff;
+              border: none;
+              border-radius: 1em;
+              cursor: pointer;
+            "
+          >
+            Submit
+          </button>
+        </div>
+        <div>
+          <button
+            id="turnOffButtonPID"
+            type="button"
+            style="
+              display: none;
+              padding: 0.7em;
+              color: #fff;
+              background-color: #ff0000;
+              border: none;
+              border-radius: 1em;
+              cursor: pointer;
+              margin-top: 1em;
+            "
+            onclick="turnOff_PID()"
+          >
+            Turn Off
+          </button>
+        </div>
+      </form>
+
+      <form
+        id="onOffController"
+        style="
+          width: 300px;
+          height: 600px;
+          padding: 1em;
+          border: 1px solid #ccc;
+          border-radius: 1em;
+          margin: 20px;
+        "
+      >
+        <h3 style="margin: 0 0 1em">On-Off Controller</h3>
+        <h4 id="controllerState" style="margin: 0 0 1em">State: Off</h4>
+
+        <div style="margin-bottom: 1em">
+          <label
+            for="temperatureONOFF"
+            style="margin-bottom: 0.5em; color: #333333; display: block"
+            >Temperature:</label
+          >
+          <input
+            type="text"
+            id="temperatureONOFF"
+            name="temperatureONOFF"
+            style="
+              border: 1px solid #ccc;
+              padding: 0.5em;
+              font-size: 1em;
+              width: 100%;
+              box-sizing: border-box;
+            "
+          />
+        </div>
+        <div style="margin-bottom: 1em">
+          <label
+            for="tresholdONOFF"
+            style="margin-bottom: 0.5em; color: #333333; display: block"
+            >Threshold:</label
+          >
+          <input
+            type="text"
+            id="tresholdONOFF"
+            name="tresholdONOFF"
+            style="
+              border: 1px solid #ccc;
+              padding: 0.5em;
+              font-size: 1em;
+              width: 100%;
+              box-sizing: border-box;
+            "
+          />
+        </div>
+        <div>
+          <button
+            type="submit"
+            style="
+              padding: 0.7em;
+              color: #fff;
+              background-color: #007bff;
+              border: none;
+              border-radius: 1em;
+              cursor: pointer;
+            "
+          >
+            Submit
+          </button>
+        </div>
+        <div>
+          <button
+            id="turnOffButtonONOFF"
+            type="button"
+            style="
+              display: none;
+              padding: 0.7em;
+              color: #fff;
+              background-color: #ff0000;
+              border: none;
+              border-radius: 1em;
+              cursor: pointer;
+              margin-top: 1em;
+            "
+            onclick="turnOff_ONOFF()"
+          >
+            Turn Off
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <footer>
+      Sistemas Ciberfísicos<br />Copyright © 2024 J. Cecílio, DI - FCUL<br /><a
+        href="mailto:jmcecilio@ciencias.ulisboa.pt"
+        >jmcecilio@ciencias.ulisboa.pt</a
+      >
+    </footer>
+    <script>
+      function showValHeat(newVal) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            document.getElementById("valBox_heating").innerHTML =
+              this.responseText;
+          }
+        };
+        xhttp.open(
+          "GET",
+          "http://172.20.10.7:5555/heat?name=heater&value=" + newVal,
+          true
+        );
+        xhttp.setRequestHeader(
+          "Content-type",
+          "application/x-www-form-urlencoded"
+        );
+        xhttp.send();
+      }
+      function showValFan(newVal) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            document.getElementById("valBox_cooling").innerHTML =
+              this.responseText;
+          }
+        };
+        xhttp.open(
+          "GET",
+          "http://172.20.10.7:5555/fan?name=cooler&value=" + newVal,
+          true
+        );
+        xhttp.setRequestHeader(
+          "Content-type",
+          "application/x-www-form-urlencoded"
+        );
+        xhttp.send();
+      }
+
+      let intervalPID = null;
+      let intervalONOFF = null;
+
+      const ctx = document.getElementById("myChart").getContext("2d");
+
+      // CHART-ONLY DATA DATASETS - LABELS ARE TIMESTAMPS
+      const chartData = {
+        labels: [],
+        datasets: [
+          {
+            label: "Temperature In",
+            borderColor: "red",
+            data: [],
+            fill: false,
+          },
+          {
+            label: "Temperature Out",
+            borderColor: "blue",
+            data: [],
+            fill: false,
+          },
+        ],
+      };
+
+      // ALL DATA DATASETS - LABELS ARE TIMESTAMPS
+      const data = {
+        labels: [],
+        datasets: [
+          {
+            label: "Temperature In",
+            data: [],
+            fill: false,
+          },
+          {
+            label: "Temperature Out",
+            data: [],
+            fill: false,
+          },
+          {
+            label: "Humidity In",
+            data: [],
+            fill: false,
+          },
+          {
+            label: "Humidity Out",
+            data: [],
+            fill: false,
+          },
+          {
+            label: "Fan Percentage",
+            data: [],
+            fill: false,
+          },
+          {
+            label: "Heater Percentage",
+            data: [],
+            fill: false,
+          },
+        ],
+      };
+
+      //CHART CONFIG
+      const myChart = new Chart(ctx, {
+        type: "line",
+        data: chartData,
+        options: {
+          responsive: true,
+          scales: {
+            x: {
+              type: "linear",
+              title: {
+                display: true,
+                text: "Timestamp",
+              },
+            },
+            y: {
+              title: {
+                display: true,
+                text: "Temperature (°C)",
+              },
+            },
+          },
+        },
+      });
+      /*
+                function generateData() {
+                const now = new Date();
+                const tempIn = (Math.random() * 10 + 20).toFixed(2); // Random temperature between 20 and 30
+                const tempOut = (Math.random() * 15 + 10).toFixed(2); // Random temperature between 10 and 25
+                const humIn = (Math.random() * 20 + 40).toFixed(2); // Random humidity between 40 and 60
+                const humOut = (Math.random() * 30 + 30).toFixed(2); // Random humidity between 30 and 60
+
+                return {
+                    timestamp: now,
+                    tempIn: parseFloat(tempIn),
+                    tempOut: parseFloat(tempOut),
+                    humIn: parseFloat(humIn),
+                    humOut: parseFloat(humOut),
+                };
+                }
+
+                function updateChart() {
+                const newData = generateData();
+                chartData.labels.push(newData.timestamp);
+                chartData.datasets[0].data.push(newData.tempIn);
+                chartData.datasets[1].data.push(newData.tempOut);
+                chartData.datasets[2].data.push(newData.humIn);
+                chartData.datasets[3].data.push(newData.humOut);
+
+                if (chartData.labels.length > 20) {
+                    chartData.labels.shift();
+                    chartData.datasets.forEach((dataset) => dataset.data.shift());
+                }
+
+                myChart.update();
+                }*/
+
+      //MAKES REQUEST TO SERVER TO GET FROM THE SENSORS AND UPDATES THE DATASETS
+      function updatePageData() {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+          if (this.readyState == 4 && this.status == 200) {
+            var tokens = this.responseText.split("&");
+            console.log(this.responseText);
+            var tempIn = parseFloat(tokens[0]);
+            var humIn = parseFloat(tokens[1]);
+            var tempOut = parseFloat(tokens[2]);
+            var humOut = parseFloat(tokens[3]);
+            var timestamp = parseInt(tokens[4]);
+
+            console.log("timestamp = ", timestamp);
+            var fan_percentage = parseFloat(tokens[5]);
+            var heater_percentage = parseFloat(tokens[6]);
+
+            document.getElementById("valBox_cooling").innerHTML =
+              Math.floor(fan_percentage);
+            document.getElementById("valBox_heating").innerHTML =
+              Math.floor(heater_percentage);
+
+            chartData.labels.push(timestamp);
+            chartData.datasets[0].data.push(tempIn);
+            chartData.datasets[1].data.push(tempOut);
+
+            data.labels.push(timestamp);
+            data.datasets[0].data.push(tempIn);
+            data.datasets[1].data.push(tempOut);
+            data.datasets[2].data.push(humIn);
+            data.datasets[3].data.push(humOut);
+            data.datasets[4].data.push(fan_percentage);
+            data.datasets[5].data.push(heater_percentage);
+
+            document.getElementById("temperature_in").innerHTML = tokens[0];
+            document.getElementById("humidity_in").innerHTML = tokens[1];
+            document.getElementById("temperature_out").innerHTML = tokens[2];
+            document.getElementById("humidity_out").innerHTML = tokens[3];
+
+            myChart.update();
+          }
+        };
+        xhttp.open("GET", "http://172.20.10.7:4444/data", true);
+        xhttp.setRequestHeader(
+          "Content-type",
+          "application/x-www-form-urlencoded"
+        );
+        xhttp.send();
+      }
+
+      setInterval(updatePageData, 2500); //GETS INFO FROM THE SENSORS EVERY 2 SECONDS
+      //setInterval(updateChart, 2500); -Dummy Data
+
+      //GETS THE DATA AND CREATES A CSV
+      function downloadCsv() {
+        let csvContent =
+          "Timestamp,Temperature In,Temperature Out,Humidity In,Humidity Out,Fan Percentage,Heater Percentage\n";
+        for (let i = 0; i < data.labels.length; i++) {
+          const timestamp = data.labels[i];
+          const tempIn = data.datasets[0].data[i];
+          const tempOut = data.datasets[1].data[i];
+          const humIn = data.datasets[2].data[i];
+          const humOut = data.datasets[3].data[i];
+          const fan_percentage = data.datasets[4].data[i];
+          const heater_percentage = data.datasets[5].data[i];
+          csvContent += `${timestamp},${tempIn},${tempOut},${humIn},${humOut},${fan_percentage},${heater_percentage}\n`;
+        }
+
+        const blob = new Blob([csvContent], {
+          type: "text/csv;charset=utf-8;",
+        });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "chartData.csv");
+        link.style.visibility = "hidden";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      //EVENT TO DOWNLOAD CSV
+      document
+        .getElementById("downloadCsv")
+        .addEventListener("click", downloadCsv);
+
+      //---------------- ON-OFF CONTROLLER CODE -------------------
+      //SUBMIT BTN EVENT
+      document
+        .getElementById("onOffController")
+        .addEventListener("submit", function (event) {
+          event.preventDefault(); // Prevent the default form submission
+
+          document.getElementById("controllerState").innerText = "State: On";
+
+          document.getElementById("turnOffButtonONOFF").style.display = "block";
+
+          if (intervalONOFF === null) {
+            startInterval_ONOFF();
+          }
+        });
+
+      //EVERY 2s ON-OFF CONTROLLER FUNCTION IS RUNNED
+      function startInterval_ONOFF() {
+        intervalONOFF = setInterval(() => {
+          turnOn_ONOFF();
+        }, 2500);
+      }
+
+      //MAKE REQUEST TO BACKEND TO RUN ACTUATE() ON ON-OFF CONTROLLER
+      function turnOn_ONOFF() {
+        const temperature = document.getElementById("temperatureONOFF").value;
+        const treshold = document.getElementById("tresholdONOFF").value;
+
+        const xhttp = new XMLHttpRequest();
+        xhttp.open("POST", "http://172.20.10.7:5555/on-off-controller", true);
+        xhttp.setRequestHeader(
+          "Content-Type",
+          "application/x-www-form-urlencoded"
+        );
+
+        xhttp.onreadystatechange = function () {
+          if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+            console.log("Data submitted successfully");
+          }
+        };
+
+        xhttp.send(`temperature=${temperature}&treshold=${treshold}`);
+      }
+
+      //STOPS RUNNING THE FUCTION EVERY 2s & SENDS A RESPONSE TO THE SERVER
+      function turnOff_ONOFF() {
+        if (intervalONOFF != null) {
+          clearInterval(intervalONOFF);
+          intervalONOFF = null;
+        }
+        document.getElementById("controllerState").innerText = "State: Off";
+        document.getElementById("turnOffButtonONOFF").style.display = "none";
+
+        const xhttp = new XMLHttpRequest();
+        xhttp.open(
+          "POST",
+          "http://172.20.10.7:5555/turn-off-controllers",
+          true
+        );
+        xhttp.setRequestHeader(
+          "Content-Type",
+          "application/x-www-form-urlencoded"
+        );
+
+        xhttp.onreadystatechange = function () {
+          if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+            console.log("ON-OFF CONTROLLER SHUTTING OFF");
+          }
+        };
+
+        xhttp.send(`ON-OFF CONTROLLER SHUTDOWN`);
+      }
+
+      //----------------PID CONTROLLER CODE-------------------
+
+      //SUBMIT BTN EVENT
+      document
+        .getElementById("pidControllerForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault(); // Prevent the default form submission
+
+          document.getElementById("turnOffButtonPID").style.display = "block"; //SHOW OFF BTN
+          document.getElementById("controllerStatePID").innerText = "State: On"; //CHANGE STATE TO ON
+
+          if (intervalPID === null) {
+            startInterval_PID();
+          }
+        });
+
+      //EVERY 2s PID CONTROLLER FUNCTION IS RUNNED
+      function startInterval_PID() {
+        intervalPID = setInterval(() => {
+          turnOn_PID();
+        }, 2500);
+      }
+
+      //MAKE REQUEST TO BACKEND TO RUN ACTUATE() ON PID CONTROLLER
+      function turnOn_PID() {
+        const proportional = document.getElementById("proportional").value;
+        const integral = document.getElementById("integral").value;
+        const derivative = document.getElementById("derivative").value;
+        const threshold = document.getElementById("tresholdPID").value;
+        const temperature = document.getElementById("temperaturePID").value;
+
+        const xhttp = new XMLHttpRequest();
+        xhttp.open("POST", "http://172.20.10.7:5555/pid-controller", true);
+        xhttp.setRequestHeader(
+          "Content-Type",
+          "application/x-www-form-urlencoded"
+        );
+
+        xhttp.onreadystatechange = function () {
+          if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+            console.log("Data submitted successfully");
+          }
+        };
+
+        xhttp.send(
+          `proportional=${proportional}&integral=${integral}&derivative=${derivative}&threshold=${threshold}&temperature=${temperature}`
+        );
+      }
+
+      //STOPS RUNNING THE FUCTION EVERY 2s & SENDS A RESPONSE TO THE SERVER
+      function turnOff_PID() {
+        clearInterval(intervalPID);
+        intervalPID = null;
+
+        document.getElementById("controllerStatePID").innerText = "State: Off"; //STATE OFF
+        document.getElementById("turnOffButtonPID").style.display = "none"; //HIDE TURN OFF BTN
+
+        const xhttp = new XMLHttpRequest();
+        xhttp.open(
+          "POST",
+          "http://172.20.10.7:5555/turn-off-controllers",
+          true
+        );
+        xhttp.setRequestHeader(
+          "Content-Type",
+          "application/x-www-form-urlencoded"
+        );
+
+        xhttp.onreadystatechange = function () {
+          if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
+            console.log("PID CONTROLLER SHUTTING OFF");
+          }
+        };
+
+        xhttp.send(`PID CONTROLLER SHUTDOWN`);
+      }
+    </script>
+  </body>
+</html>
